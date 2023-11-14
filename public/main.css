@@ -64,6 +64,10 @@ main {
     overflow: hidden scroll;
 }
 
+#chat-log > :first-child {
+    margin-top: auto;
+}
+
 #chat-input {
     display: flex; flex-direction: row;
     padding: .5em; gap: .5em;
