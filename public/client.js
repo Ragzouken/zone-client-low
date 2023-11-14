@@ -1,3 +1,15 @@
+/**
+ * @typedef {Object} Media
+ * @property {string} mediaId
+ * @property {string} title
+ * @property {number} duration
+ * @property {string} src
+ * @property {string} [subtitle]
+ * @property {string} [thumbnail]
+ * @property {string} [path]
+ * @property {string} [library]
+ */
+
 function createSocket(url, ticket) {
     return new Promise((resolve, reject) => {
         const socket = new WebSocket(`wss://${url.host}/zone/${ticket}`);
@@ -35,6 +47,7 @@ class ZoneState {
     constructor() {
         this.users = new Map();
         this.lastPlayedItem = undefined;
+        this.queue = [];
     }
 }
 
@@ -44,6 +57,11 @@ export class ZoneClient extends EventEmitter {
         this.urlRoot = new URL(urlRoot);
         this.messaging = new Messaging();
         this.zone = new ZoneState();
+
+        const unqueue = (itemId) => {
+            const index = this.zone.queue.findIndex((value) => value.itemId === itemId);
+            this.zone.queue.splice(index, 1);
+        }
 
         this.messaging.on('close', (code) => {
             const clean = code <= 1001 || code >= 4000;
@@ -95,15 +113,15 @@ export class ZoneClient extends EventEmitter {
         });
         this.messaging.messages.on('play', (message) => {
             this.zone.lastPlayedItem = message.item;
-            // if (message.item) unqueue(message.item.itemId);
+            if (message.item) unqueue(message.item.itemId);
             this.emit('play', { message });
         });
         this.messaging.messages.on('queue', (message) => {
-            // this.zone.queue.push(...message.items);
+            this.zone.queue.push(...message.items);
             if (message.items.length === 1) this.emit('queue', { item: message.items[0] });
         });
         this.messaging.messages.on('unqueue', (message) => {
-            // unqueue(message.itemId);
+            unqueue(message.itemId);
         });
     }
 
@@ -134,6 +152,25 @@ export class ZoneClient extends EventEmitter {
 
     async chat(text) {
         this.messaging.send('chat', { text });
+    }
+
+    async queue(path) {
+        return this.request("POST", "/queue", { path });
+    }
+
+    /**
+     * @param {string} library
+     * @param {string} query
+     * @param {string} tag
+     * @returns {Promise<Media[]>}
+     */
+    async searchLibrary(library, query = undefined, tag = undefined) {
+        const search = new URLSearchParams();
+        if (query) search.set("q", query);
+        if (tag) search.set("tag", tag);
+        const results = /** @type {Media[]} */ (await this.request("GET", `/libraries/${library}?${search}`));
+        results.forEach((item) => item.path = `${library}:${item.mediaId}`);
+        return results;
     }
 
     async request(method, url, body) {

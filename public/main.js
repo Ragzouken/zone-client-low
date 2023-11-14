@@ -66,6 +66,15 @@ function openVideoTab() {
     videoTab.onload = () => updateVideoTab();
 }
 
+/**
+ * @param {string} text
+ */
+function textToYoutubeVideoId(text) {
+    text = text.trim();
+    if (text.length === 11) return text;
+    return new URL(text).searchParams.get('v');
+}
+
 export async function start() {
     window.addEventListener("click", login, { once: true });
 }
@@ -95,6 +104,53 @@ export async function login() {
     chatCommands.set("name", rename);
     chatCommands.set("avatar", avatar);
     chatCommands.set("skip", skip);
+    chatCommands.set('youtube', (args) => client.queue("youtube:" + textToYoutubeVideoId(args)));
+    chatCommands.set("search", (query) => chatSearch("youtube", query));
+    chatCommands.set("library", (query) => chatSearch("library", query));
+    chatCommands.set('result', playFromSearchResult);
+
+    chatCommands.set("queue", () => {
+        const queue = [client.zone.lastPlayedItem, ...client.zone.queue];
+
+        for (const item of queue) {
+            if (!item) continue;
+            logChat(`[${item.itemId}] ${item.media.title} (${secondsToTime(item.media.duration/1000)})`);
+        }
+    });
+
+    chatCommands.set('l', chatCommands.get('library'));
+    chatCommands.set('s', chatCommands.get('search'));
+    chatCommands.set('r', chatCommands.get('result'));
+    chatCommands.set('q', chatCommands.get('queue'));
+
+    let lastSearchResults = [];
+
+    async function playFromSearchResult(args) {
+        const index = parseInt(args, 10) - 1;
+        const results = lastSearchResults;
+
+        if (isNaN(index)) logStatus(colorText(`did not understand '${args}' as a number`, "#ff00ff"));
+        else if (!results || index < 0 || index >= results.length)
+            logStatus(colorText(`there is no #${index + 1} search result`, "#ff00ff"));
+        else return client.queue(results[index].path);
+    }
+
+    /**
+     * @param {string} library
+     * @param {string} [query]
+     * @param {string} [tag]
+     */
+    async function chatSearch(library, query = undefined, tag = undefined) {
+        lastSearchResults = await client.searchLibrary(library, query, tag);
+        const lines = lastSearchResults
+            .slice(0, 5)
+            .map(({ title, duration }, i) => `${i + 1}. ${title} (${secondsToTime(duration / 1000)})`);
+        
+        logChat(colorText("? queue Search result with /result n", "#ffff00"));
+        for (const line of lines) {
+            logChat(colorText(line, "#00FFFF"));
+        }
+    }
 
     function rename(name) {
         localStorage.setItem('name', name);
@@ -139,8 +195,16 @@ export async function login() {
         return [colorText(user.name, color), html("img", { class: "chat-avatar pixelated", src: tile })];
     }
 
+    const fadeAnim = [
+        { opacity: 1 },
+        { opacity: 0 },
+    ];
+
     function logChat(...elements) {
         const root = html("div", { class: "chat-message" }, ...elements);
+        const anim = root.animate(fadeAnim, { duration: 1000, delay: 30 * 1000 });
+        anim.addEventListener("finish", () => root.remove());
+
         log.append(root);
         root.scrollIntoView();
         return root;
