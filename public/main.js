@@ -34,15 +34,19 @@ function replaceSources(video, src, sub) {
 }
 
 function updateVideoTab() {
-    if (!lastPlay) return;
+    const video = /** @type {HTMLVideoElement} */ (ONE("video"));
+
+    if (!lastPlay) {
+        video.replaceChildren();
+        video.load();
+        return;
+    }
 
     const src = "https://tinybird.zone/" + lastPlay.item.media.src;
     const subtitle = "https://tinybird.zone/" + lastPlay.item.media.subtitle;
     
     const elapsed = performance.now() - lastPlay.timestamp;
     const time = lastPlay.time + elapsed;
-    
-    const video = /** @type {HTMLVideoElement} */ (ONE("video"));
 
     if (subtitle || src) {
         replaceSources(video, src, subtitle);
@@ -150,9 +154,6 @@ export async function login() {
     }
 
     function logJoin(user) {
-        const color = getUserColor(user.userId);
-        const tile = decodeTile(user.avatar, color).canvas.toDataURL();
-
         logStatus(
             ...username(user),
             colorText("joined", "#ff00ff"),
@@ -217,6 +218,8 @@ export async function login() {
     client.on('play', async ({ message: { item, time } }) => {
         if (!item) {
             // player.stopPlaying();
+            lastPlay = undefined;
+            updateVideoTab();
         } else {
             // player.setPlaying(item, time || 0);
 
