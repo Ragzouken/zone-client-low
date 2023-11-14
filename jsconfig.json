@@ -1,0 +1,16 @@
+{
+    "typeAcquisition": {
+      "enable": true,
+      "include": []
+    },
+    "compilerOptions": {
+      "module": "commonjs",
+      "target": "esnext",
+      "checkJs": true,
+      "baseUrl": "./public/",
+      "paths": {
+          "*": ["*.js"]
+      }
+    },
+    "include": ["public/**/*.js", "*.d.ts"],
+}

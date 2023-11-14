@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>zone mobile</title>
+  
+  <link rel="stylesheet" href="./main.css"> 
+
+  <script type="importmap">
+    {
+      "imports": {
+        "utility": "./utility.js",
+        "blitsy": "./blitsy.js",
+        "client": "./client.js",
+        "start": "./start.js",
+        "main": "./main.js"
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <script type="module">
+    import { start } from "main";
+    document.addEventListener("DOMContentLoaded", start);
+  </script>
+
+  <main>
+    <div id="chat">
+      <div id="chat-log">
+
+      </div>
+      <form id="chat-input">
+        <input id="chat-text" type="text" placeholder="chat message..." autocomplete="off">
+        <input id="chat-send" type="submit" value="send">
+      </form>
+    </div>
+
+    <div id="scene"><video></video></div>
+  </main>
+</body>
+
+</html>
