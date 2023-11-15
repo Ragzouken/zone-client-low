@@ -6,7 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>zone low</title>
   
-  <link rel="stylesheet" href="./main.css"> 
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="stylesheet" href="./main.css">
+  <link rel="stylesheet" href="./entry.css">
 
   <script type="importmap">
     {
@@ -27,6 +29,18 @@
   </script>
 
   <main>
+    <div id="entry-splash">
+      <div id="entry-panel">
+        <div id="entry-logo-container">
+          <img id="entry-logo" class="pixelated" src="./zone-logo.png">
+        </div>
+        <div id="entry-users" class="users-container">...</div>
+        <form id="entry-form">
+          <input id="entry-name" type="text" placeholder="your name..." minlength="1" maxlength="16" required>
+          <input id="entry-button" type="submit" value="enter" disabled>
+        </form>
+      </div>
+    </div>
     <div id="chat">
       <div id="chat-log">
 

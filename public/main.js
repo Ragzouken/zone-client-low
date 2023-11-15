@@ -39,6 +39,7 @@ function updateVideoTab() {
     if (!lastPlay) {
         video.replaceChildren();
         video.load();
+        video.poster = "zone-logo.png";
         return;
     }
 
@@ -47,6 +48,9 @@ function updateVideoTab() {
     
     const elapsed = performance.now() - lastPlay.timestamp;
     const time = lastPlay.time + elapsed;
+
+    const audio = src.endsWith(".mp3");
+    video.poster = audio ? "./audio-logo.png" : "";
 
     if (subtitle || src) {
         replaceSources(video, src, subtitle);
@@ -76,19 +80,77 @@ function textToYoutubeVideoId(text) {
 }
 
 export async function start() {
-    window.addEventListener("click", login, { once: true });
+    setupEntrySplash();
 }
 
-export async function login() {
-    const audio = html("audio", { src: "./buddy-in.mp3", hidden: true });
-    document.body.append(audio);
-    audio.play();
+function createAvatarElement(avatar, color = "#ffffff") {
+    const src = decodeTile(avatar, color).canvas.toDataURL();
+    const img = html("img", { class: "chat-avatar pixelated", src });
+    return img;
+}
 
+function setupEntrySplash() {
+    const nameInput = /** @type {HTMLInputElement} */ (document.getElementById('entry-name'));
+    const entrySplash = /** @type {HTMLElement} */ (document.getElementById('entry-splash'));
+    const entryUsers = /** @type {HTMLElement} */ (document.getElementById('entry-users'));
+    const entryButton = /** @type {HTMLInputElement} */ (document.getElementById('entry-button'));
+    const entryForm = /** @type {HTMLFormElement} */ (document.getElementById('entry-form'));
+
+    function refreshUsers(users) {
+        entryUsers.innerHTML = '';
+        users.forEach((user) => {
+            const element = document.createElement('div');
+            const label = document.createElement('div');
+            const hex = getUserColor(user) ?? "white";
+            label.replaceChildren(html("span", { style: `color: ${hex}` }, user.name ?? "anonymous"))
+            element.appendChild(createAvatarElement(user.avatar || 'GBgYPH69JCQ='));
+            element.appendChild(label);
+            entryUsers.appendChild(element);
+        });
+    }
+
+    function updateEntryUsers() {
+        if (entrySplash.hidden) return;
+
+        fetch('https://tinybird.zone/users')
+            .then((res) => res.json())
+            .then((users) => {
+                if (users.length === 0) {
+                    entryUsers.innerHTML = 'zone is currenty empty';
+                } else {
+                    refreshUsers(users);
+                }
+            });
+    }
+    updateEntryUsers();
+    const interval = setInterval(updateEntryUsers, 5000);
+
+    nameInput.value = localName;
+    entryButton.disabled = !entryForm.checkValidity();
+    nameInput.addEventListener('input', () => (entryButton.disabled = !entryForm.checkValidity()));
+
+    entryForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        
+        const audio = html("audio", { src: "./buddy-in.mp3", hidden: true });
+        document.body.append(audio);
+        audio.play();
+
+        entrySplash.hidden = true;
+        clearInterval(interval);
+
+        window.dispatchEvent(new Event('resize')); // trigger a resize to update renderer
+        localName = nameInput.value;
+        localStorage.setItem('name', localName);
+        await login();
+    });
+}
+
+async function login() {
     const client = new ZoneClient("https://tinybird.zone/");
 
     const log = ONE("#chat-log");
     const chatInput = /** @type {HTMLInputElement} */ (ONE("#chat-text"));
-    const chatButton = ONE("#chat-send");
 
     ONE("#chat-input").addEventListener("submit", (event) => {
         event.preventDefault();
@@ -108,6 +170,7 @@ export async function login() {
     chatCommands.set("search", (query) => chatSearch("youtube", query));
     chatCommands.set("library", (query) => chatSearch("library", query));
     chatCommands.set('result', playFromSearchResult);
+    chatCommands.set("banger", (tag) => client.banger(tag))
 
     chatCommands.set("queue", () => {
         const queue = [client.zone.lastPlayedItem, ...client.zone.queue];
@@ -191,8 +254,8 @@ export async function login() {
 
     function username(user) {
         const color = getUserColor(user.userId);
-        const tile = decodeTile(user.avatar, color).canvas.toDataURL();
-        return [colorText(user.name, color), html("img", { class: "chat-avatar pixelated", src: tile })];
+        const img = createAvatarElement(user.avatar, color);
+        return [colorText(user.name, color), img];
     }
 
     const fadeAnim = [
@@ -275,7 +338,7 @@ export async function login() {
         // refreshQueue();
     });
     client.on('unqueue', ({ item }) => {
-        // chat.log(`{clr=#008888}- ${item.media.title} unqueued`);
+        logChat(colorText(`- ${item.media.title} unqueued`, "#008888"));
         // refreshQueue();
     });
 
@@ -290,7 +353,7 @@ export async function login() {
             const { title, duration } = item.media;
             const t = secondsToTime(duration / 1000);
             logChat(
-                colorText(`> ${title} (${t}) rolled from `, "#00ffff"),
+                colorText(`> ${title} (${t})`, "#00ffff"),
             );
 
             setCurrentItem(item, time);

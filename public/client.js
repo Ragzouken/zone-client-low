@@ -158,6 +158,10 @@ export class ZoneClient extends EventEmitter {
         return this.request("POST", "/queue", { path });
     }
 
+    async banger(tag = undefined) {
+        return this.request("POST", "/queue/banger", { tag });
+    }
+
     /**
      * @param {string} library
      * @param {string} query
