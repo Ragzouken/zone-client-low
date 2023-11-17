@@ -21,28 +21,16 @@ function setCurrentItem(player, item, time) {
  */
 function updatePlayer(player) {
     if (!lastPlay) {
-        player.setSource();
+        player.setState();
         player.videoElement.poster = "zone-logo.png";
         return;
+    } else {
+        const elapsed = performance.now() - lastPlay.timestamp;
+        const time = (lastPlay.time + elapsed) / 1000;
+        const { src, subtitle } = lastPlay.item.media;
+
+        player.setState({ src, subtitle, time });    
     }
-
-    const src = "https://tinybird.zone/" + lastPlay.item.media.src;
-    const subtitle = "https://tinybird.zone/" + lastPlay.item.media.subtitle;
-
-    player.setSource(src);
-    player.setSubtitles(subtitle);
-
-    const elapsed = performance.now() - lastPlay.timestamp;
-    const time = lastPlay.time + elapsed;
-
-    const audio = src.endsWith(".mp3");
-    player.videoElement.poster = audio ? "./audio-logo.png" : "";
-
-    const target = time / 1000;
-    const error = Math.abs(player.videoElement.currentTime - target);
-    if (error > 0.1) player.videoElement.currentTime = target;
-    player.videoElement.load();
-    player.videoElement.play();
 }
 
 /**
@@ -124,7 +112,7 @@ function setupEntrySplash() {
 
 async function login() {
     const client = new ZoneClient("https://tinybird.zone/");
-    const player = new Player();
+    const player = new Player({ root: "https://tinybird.zone" });
 
     ONE("#scene").append(player.videoElement);
 
