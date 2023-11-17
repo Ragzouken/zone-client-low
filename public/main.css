@@ -95,9 +95,9 @@ main {
 }
 
 .chat-avatar {
-    margin: 0 .5em;
-    aspect-ratio: 1;
     height: 16px;
+
+    aspect-ratio: 1;
 
     vertical-align: middle;
 }

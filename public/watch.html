@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>zone video</title>
+    
+    <link rel="icon" type="image/png" href="icon.png">
+    <style>
+      html, body, video {
+        margin: 0; padding: 0;
+        position: absolute; inset: 0;
+        width: 100%; height: 100%;
+        
+        background-color: black;
+
+        display: grid;
+      }
+
+      button {
+        place-self: center;
+        font-size: 32px;
+        font-family: monospace;
+        padding: .5em 1em;
+      }
+
+      video[poster] {
+        image-rendering: -moz-crisp-edges;
+        image-rendering: -webkit-crisp-edges;
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
+      }
+    </style>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "utility": "./utility.js",
+          "audio": "./audio.js",
+          "player": "./player.js"
+        }
+      }
+    </script>
+  </head>
+
+<body>
+  <script type="module">
+    import { sleep } from "utility";
+    import { playClip } from "audio";
+    import { Player } from "player";
+
+    const dom = new Promise((resolve) => document.addEventListener("DOMContentLoaded", resolve));
+    const audio = new Promise((resolve) => {
+      window.addEventListener("click", () => { playClip("./buddy-in.mp3"); resolve() }, { once: true });
+    });
+
+    const player = new Player();
+
+    async function refresh() {
+      fetch('https://tinybird.zone/playing')
+      .then((res) => res.json())
+      .then(({ item, time }) => {
+          if (item) {
+            const { src } = item.media;
+            const subtitle = item.media.subtitle ? `https://tinybird.zone/${item.media.subtitle}` : undefined;
+            
+            player.setSource("https://tinybird.zone/" + src);
+            player.setSubtitles(subtitle);
+            player.videoElement.currentTime = time / 1000;
+            player.videoElement.play();
+          } else {
+            player.setSource();
+          }
+      });
+    }
+
+    async function start() {
+      await Promise.all([dom, audio]);
+      document.body.replaceChildren(player.videoElement);
+      refresh();
+      setInterval(refresh, 500);
+    }
+
+    start();
+  </script>
+
+  <button>click</button>
+</body>
+
+</html>

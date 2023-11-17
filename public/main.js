@@ -1,6 +1,7 @@
 import { HSVToRGB, createRendering2D, hexToUint32, rgbToHex } from "blitsy";
 import { ZoneClient } from "client";
 import { ONE, ALL, html, sleep } from "utility"; 
+import { Player } from "player";
 
 let localName = localStorage.getItem("name") || "zone-mobile-test";
 let localAvatar = 
@@ -8,66 +9,40 @@ let localAvatar =
     || localStorage.getItem('avatar')
     || "GBgYPH69JCQ=";
 
-let videoTab;
 let lastPlay;
 
-function setCurrentItem(item, time) {
+function setCurrentItem(player, item, time) {
     lastPlay = { timestamp: performance.now(), time, item };
-    updateVideoTab();
+    updatePlayer(player);
 }
 
-function replaceSources(video, src, sub) {
-    const source = document.createElement("source");
-    const track = document.createElement("track");
-
-    source.src = src;
-    source.type = "video/mp4";
-
-    video.replaceChildren(source, track);
-
-    if (sub) {
-        track.kind = 'subtitles';
-        track.label = 'english';
-        track.src = sub;
-        video.textTracks[0].mode = 'showing';
-    }
-}
-
-function updateVideoTab() {
-    const video = /** @type {HTMLVideoElement} */ (ONE("video"));
-
+/**
+ * @param {Player} player
+ */
+function updatePlayer(player) {
     if (!lastPlay) {
-        video.replaceChildren();
-        video.load();
-        video.poster = "zone-logo.png";
+        player.setSource();
+        player.videoElement.poster = "zone-logo.png";
         return;
     }
 
     const src = "https://tinybird.zone/" + lastPlay.item.media.src;
     const subtitle = "https://tinybird.zone/" + lastPlay.item.media.subtitle;
-    
+
+    player.setSource(src);
+    player.setSubtitles(subtitle);
+
     const elapsed = performance.now() - lastPlay.timestamp;
     const time = lastPlay.time + elapsed;
 
     const audio = src.endsWith(".mp3");
-    video.poster = audio ? "./audio-logo.png" : "";
+    player.videoElement.poster = audio ? "./audio-logo.png" : "";
 
-    if (subtitle || src) {
-        replaceSources(video, src, subtitle);
-    }
-
-    if (time) {
-        const target = time / 1000;
-        const error = Math.abs(video.currentTime - target);
-        if (error > 0.1) video.currentTime = target;
-        video.load();
-        video.play();
-    }
-}
-
-function openVideoTab() {
-    videoTab = window.open("./video.html");
-    videoTab.onload = () => updateVideoTab();
+    const target = time / 1000;
+    const error = Math.abs(player.videoElement.currentTime - target);
+    if (error > 0.1) player.videoElement.currentTime = target;
+    player.videoElement.load();
+    player.videoElement.play();
 }
 
 /**
@@ -83,6 +58,20 @@ export async function start() {
     setupEntrySplash();
 }
 
+function colorText(text, color) {
+    return html("span", { style: `color: ${color}` }, text);
+}
+
+function createSpaceElement(width) {
+    return html("span", { style: `display: inline-block; width: ${width}px` });
+}
+
+function createUserElement(user) {
+    const name = colorText(user.name ?? "anonymous", getUserColor(user.userId ?? 0));
+    const avatar = createAvatarElement(user.avatar || 'GBgYPH69JCQ=');
+    return html("div", {}, name, createSpaceElement(8), avatar);
+}
+
 function createAvatarElement(avatar, color = "#ffffff") {
     const src = decodeTile(avatar, color).canvas.toDataURL();
     const img = html("img", { class: "chat-avatar pixelated", src });
@@ -96,19 +85,6 @@ function setupEntrySplash() {
     const entryButton = /** @type {HTMLInputElement} */ (document.getElementById('entry-button'));
     const entryForm = /** @type {HTMLFormElement} */ (document.getElementById('entry-form'));
 
-    function refreshUsers(users) {
-        entryUsers.innerHTML = '';
-        users.forEach((user) => {
-            const element = document.createElement('div');
-            const label = document.createElement('div');
-            const hex = getUserColor(user) ?? "white";
-            label.replaceChildren(html("span", { style: `color: ${hex}` }, user.name ?? "anonymous"))
-            element.appendChild(createAvatarElement(user.avatar || 'GBgYPH69JCQ='));
-            element.appendChild(label);
-            entryUsers.appendChild(element);
-        });
-    }
-
     function updateEntryUsers() {
         if (entrySplash.hidden) return;
 
@@ -116,9 +92,9 @@ function setupEntrySplash() {
             .then((res) => res.json())
             .then((users) => {
                 if (users.length === 0) {
-                    entryUsers.innerHTML = 'zone is currenty empty';
+                    entryUsers.replaceChildren("zone is currenty empty");
                 } else {
-                    refreshUsers(users);
+                    entryUsers.replaceChildren(...users.map(createUserElement));
                 }
             });
     }
@@ -148,6 +124,9 @@ function setupEntrySplash() {
 
 async function login() {
     const client = new ZoneClient("https://tinybird.zone/");
+    const player = new Player();
+
+    ONE("#scene").append(player.videoElement);
 
     const log = ONE("#chat-log");
     const chatInput = /** @type {HTMLInputElement} */ (ONE("#chat-text"));
@@ -248,14 +227,14 @@ async function login() {
         chatInput.value = '';
     }
 
-    function colorText(text, color) {
-        return html("span", { style: `color: ${color}` }, text);
-    }
-
     function username(user) {
         const color = getUserColor(user.userId);
-        const img = createAvatarElement(user.avatar, color);
-        return [colorText(user.name, color), img];
+        
+        return [
+            colorText(user.name, color), 
+            createSpaceElement(8), 
+            createAvatarElement(user.avatar, color),
+        ];
     }
 
     const fadeAnim = [
@@ -301,6 +280,7 @@ async function login() {
     client.on("chat", (data) => {
         logChat(
             ...username(data.user),
+            createSpaceElement(8),
             data.text,
         );
     });
@@ -346,7 +326,7 @@ async function login() {
         if (!item) {
             // player.stopPlaying();
             lastPlay = undefined;
-            updateVideoTab();
+            updatePlayer(player);
         } else {
             // player.setPlaying(item, time || 0);
 
@@ -356,7 +336,7 @@ async function login() {
                 colorText(`> ${title} (${t})`, "#00ffff"),
             );
 
-            setCurrentItem(item, time);
+            setCurrentItem(player, item, time);
         }
     });
 

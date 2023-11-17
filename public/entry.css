@@ -65,6 +65,10 @@
     padding: 16px;
 }
 
+.users-container .chat-avatar {
+    height: 24px;
+}
+
 .users-container > div {
     display: flex;
     flex-direction: row;
