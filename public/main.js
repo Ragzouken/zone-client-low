@@ -112,7 +112,7 @@ function setupEntrySplash() {
 
 async function login() {
     const client = new ZoneClient("https://tinybird.zone/");
-    const player = new Player({ root: "https://tinybird.zone" });
+    const player = new Player();
 
     ONE("#scene").append(player.videoElement);
 
@@ -123,11 +123,6 @@ async function login() {
         event.preventDefault();
         sendChat();
     });
-
-    // ONE("#video-tab").addEventListener("click", (event) => {
-    //     ONE("#video-tab").remove();
-    //     openVideoTab();
-    // });
 
     const chatCommands = new Map();
     chatCommands.set("name", rename);

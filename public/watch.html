@@ -45,28 +45,22 @@
 
 <body>
   <script type="module">
-    import { sleep } from "utility";
-    import { playClip } from "audio";
     import { Player } from "player";
 
-    const dom = new Promise((resolve) => document.addEventListener("DOMContentLoaded", resolve));
-    const audio = new Promise((resolve) => window.addEventListener("click", () => resolve(playClip("./buddy-in.mp3")), { once: true }));
-
-    const player = new Player({ root: "https://tinybird.zone" });
+    const player = new Player();
 
     async function refresh() {
       fetch('https://tinybird.zone/playing')
       .then((res) => res.json())
       .then(({ item, time }) => {
-          if (item) {
-            player.setState({
-              src: item.media.src,
-              subtitle: item.media.subtitle,
-              time: time / 1000,
-            });
-          } else {
-            player.setState();
-          }
+        if (item) {
+          time /= 1000;
+          const { src, subtitle, title } = item.media;
+          document.title = `zone: ${title}`;
+          player.setState({ src, subtitle, time });
+        } else {
+          player.setState();
+        }
       });
     }
 
@@ -74,9 +68,14 @@
       document.body.replaceChildren(player.videoElement);
       refresh();
       setInterval(refresh, 500);
+      player.videoElement.addEventListener("ended", refresh);
     }
 
-    Promise.all([dom, audio]).then(start);
+    document.addEventListener("DOMContentLoaded", start);
+    
+    // autoplay bypass
+    player.videoElement.muted = true;
+    window.addEventListener("click", () => player.videoElement.muted = false);
   </script>
 
   <button>click</button>

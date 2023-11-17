@@ -177,6 +177,11 @@ export class ZoneClient extends EventEmitter {
         return results;
     }
 
+    /**
+     * @param {string} method
+     * @param {string | URL} url
+     * @param {any} [body]
+     */
     async request(method, url, body) {
         url = new URL(url, this.urlRoot);
         const mode = "cors";
